@@ -1,0 +1,7 @@
+; $Id$ 
+name = Kill Aggregation
+description = Allows you to select modules and themes to disable aggregation on.
+package = Development
+version = 7.x-1.0
+core = 7.x
+php = 5.2.x

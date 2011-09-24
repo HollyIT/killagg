@@ -1,0 +1,108 @@
+<?php
+
+// $Id$ 
+
+/**
+ * @file 
+ */
+function killagg_permission() {
+  return array(
+    'administer killagg' => array(
+      'title' => 'Administer Kill Aggregation'
+    )
+  );
+}
+
+function killagg_theme() {
+  return array(
+    'killagg_admin_table' => array(
+      'render element' => 'element',
+      'file' => 'killagg.admin.inc'
+    )
+  );
+}
+
+function killagg_menu() {
+  $items['admin/config/development/killagg'] = array(
+    'title' => 'Kill Aggregation',
+    'description' => 'Adminster kill aggregation settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('killagg_settings'),
+    'access arguments' => array('administer killagg'),
+    'file' => 'killagg.admin.inc',
+  );
+  return $items;
+}
+
+function _killagg_get_files($type) {
+  static $cache = NULL;
+
+  if (!$cache) {
+    $results = db_query("SELECT * FROM {system} WHERE status=1 ORDER BY name")->fetchAll();
+    foreach ($results as $item) {
+      $item->info = unserialize($item->info);
+      $cache[$item->type][$item->name] = $item->info['name'];
+    }
+  }
+
+  return isset($cache[$type]) ? $cache[$type] : array();
+}
+
+function killagg_js_alter(&$js) {
+
+  _killagg_set_items('js', $js);
+}
+
+function killagg_css_alter(&$css) {
+  _killagg_set_items('css', $css);
+}
+
+function _killagg_set_items($type, &$agg) {
+  $disabled = variable_get('killagg_kill_items', array());
+
+  if (!isset($disabled[$type])) {
+    return;
+  }
+
+
+  $items = array();
+  foreach ($disabled[$type] as $name => $data) {
+    if ($data['disabled']) {
+      $items[] = _killagg_get_path($name, $data['type']);
+    }
+  }
+
+  foreach (array_keys($agg) as $path) {
+
+    foreach ($items as $disable) {
+      if (stripos($path, $disable) === 0) {
+        $agg[$path]['cache'] = FALSE;
+        $agg[$path]['preprocess'] = FALSE;
+      }
+    }
+  }
+}
+
+function _killagg_get_path($name, $type) {
+  static $cache = array();
+
+  if (!isset($cache[$name][$type])) {
+    switch ($type) {
+      case 'modules':
+        $cache[$name][$type] = drupal_get_path('module', $name);
+        break;
+
+      case 'themes':
+        $cache[$name][$type] = drupal_get_path('theme', $name);
+        break;
+
+      case 'misc_js':
+      case 'misc_css':
+      case 'libraries':
+        $cache[$name][$type] = $name;
+        break;
+    }
+  }
+
+  return $cache[$name][$type];
+}
